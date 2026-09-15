@@ -10,8 +10,15 @@ import { RoleSelector } from "@/components/auth/RoleSelector";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { setBindingToken } from "@/lib/session-binding";
-import { setAuthCookie } from "@/lib/mock-auth";
 import type { UserRole } from "@/lib/auth-types";
+
+/** Store real auth info in a cookie (role comes from the backend). */
+function setAuthCookie(role: UserRole, name: string, email: string) {
+  if (typeof document !== "undefined") {
+    const data = JSON.stringify({ role, name, email });
+    document.cookie = `campusvote_auth=${encodeURIComponent(data)}; path=/; max-age=86400; SameSite=Lax`;
+  }
+}
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "/api/v1").replace(/\/$/, "");
 
@@ -143,10 +150,16 @@ export function RoleLoginPage({
         setBindingToken(data.data.bindingToken);
       }
       const user = data.data?.user;
-      const backendRole = String(user?.role || "").toLowerCase();
-      const cookieRole = (["student", "candidate", "cad", "administrator"].includes(backendRole)
-        ? backendRole
-        : selectedRole) as UserRole;
+      // Backend returns UPPERCASE roles (ADMIN, CANDIDATE, STUDENT, CAD).
+      // Map to lowercase UserRole for the cookie.
+      const backendRole = String(user?.role || "").toUpperCase();
+      const roleMap: Record<string, UserRole> = {
+        ADMIN: "administrator",
+        CANDIDATE: "candidate",
+        STUDENT: "student",
+        CAD: "cad",
+      };
+      const cookieRole = roleMap[backendRole] || selectedRole;
       if (user) {
         setAuthCookie(cookieRole, user.name || user.fullName || "", user.email || normalized);
       }
