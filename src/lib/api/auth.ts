@@ -1,16 +1,19 @@
 import { api } from "./client";
 
 export interface LoginRequest {
-  email: string;
+  userIdentifier: string;
   password: string;
-  role: "student" | "candidate" | "administrator";
+  role?: "STUDENT" | "CANDIDATE" | "ADMIN" | "CAD";
 }
 
 export interface LoginResponse {
-  success: boolean;
-  token: string;
-  user: {
-    id: string;
+  authenticated: boolean;
+  requiresPasswordChange?: boolean;
+  bindingToken?: string;
+  mfaRequired?: boolean;
+  mfaChallenge?: string;
+  user?: {
+    id: number;
     name: string;
     email: string;
     role: string;
@@ -24,14 +27,15 @@ export interface ResetPasswordRequest {
 }
 
 export interface ChangePasswordRequest {
-  token: string;
+  challengeId: string;
   newPassword: string;
+  confirmPassword: string;
 }
 
 export const authApi = {
   login: (data: LoginRequest) => api.post<LoginResponse>("/auth/login", data),
   logout: () => api.post("/auth/logout", {}),
-  getProfile: () => api.get<LoginResponse["user"]>("/auth/profile"),
-  forgotPassword: (data: ResetPasswordRequest) => api.post("/auth/forgot-password", data),
+  getMe: () => api.get<{ authenticated: boolean; user?: LoginResponse["user"] }>("/auth/me"),
+  forgotPassword: (data: ResetPasswordRequest) => api.post("/auth/otp/send-reset", data),
   resetPassword: (data: ChangePasswordRequest) => api.post("/auth/reset-password", data),
 };
